@@ -81,8 +81,8 @@ async function fullRankingsUpdate(mode, type, cursor_string, entries = 0) {
       params: { cursor_string },
     });
 
-    console.log("rankings/" + mode + "/" + type, { params: { cursor_string } });
-    console.log("entries" + entries);
+    //onsole.log("rankings/" + mode + "/" + type, { params: { cursor_string } });
+    //console.log("entries" + entries);
 
     const maxUserFetch = 1000;
 
