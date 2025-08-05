@@ -193,8 +193,6 @@ function startFetch() {
     If you are doing more than 60 requests a minute,
     you should probably give peppy a yell.
   */
-
-
 }
 
 startFetch();
