@@ -1,13 +1,13 @@
--- MariaDB dump 10.19  Distrib 10.5.20-MariaDB, for debian-linux-gnu (x86_64)
+-- MySQL dump 10.13  Distrib 8.0.35, for Linux (x86_64)
 --
--- Host: localhost    Database: osu
+-- Host: localhost    Database: score_rank
 -- ------------------------------------------------------
--- Server version	10.5.20-MariaDB-1:10.5.20+maria~deb11
+-- Server version	8.0.35
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!40101 SET NAMES utf8mb4 */;
+/*!50503 SET NAMES utf8mb4 */;
 /*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
 /*!40103 SET TIME_ZONE='+00:00' */;
 /*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
@@ -21,19 +21,19 @@
 
 DROP TABLE IF EXISTS `osu_score_rank_highest`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
+/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `osu_score_rank_highest` (
-  `user_id` int(10) unsigned NOT NULL,
-  `mode` tinyint(4) NOT NULL,
-  `rank` int(11) DEFAULT 0,
-  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `user_id` int unsigned NOT NULL,
+  `mode` tinyint NOT NULL,
+  `rank` int DEFAULT '0',
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`user_id`,`mode`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
- PARTITION BY RANGE (`mode`)
-(PARTITION `p0` VALUES LESS THAN (1) ENGINE = InnoDB,
- PARTITION `p1` VALUES LESS THAN (2) ENGINE = InnoDB,
- PARTITION `p2` VALUES LESS THAN (3) ENGINE = InnoDB,
- PARTITION `p3` VALUES LESS THAN (4) ENGINE = InnoDB);
+/*!50100 PARTITION BY RANGE (`mode`)
+(PARTITION p0 VALUES LESS THAN (1) ENGINE = InnoDB,
+ PARTITION p1 VALUES LESS THAN (2) ENGINE = InnoDB,
+ PARTITION p2 VALUES LESS THAN (3) ENGINE = InnoDB,
+ PARTITION p3 VALUES LESS THAN (4) ENGINE = InnoDB) */;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -42,13 +42,14 @@ CREATE TABLE `osu_score_rank_highest` (
 
 DROP TABLE IF EXISTS `osu_score_rank_history`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
+/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `osu_score_rank_history` (
-  `user_id` int(10) unsigned NOT NULL,
-  `mode` tinyint(4) NOT NULL,
-  `rank_history` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`rank_history`)),
-  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`user_id`,`mode`)
+  `user_id` int unsigned NOT NULL,
+  `mode` tinyint NOT NULL,
+  `rank_history` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`user_id`,`mode`),
+  CONSTRAINT `osu_score_rank_history_chk_1` CHECK (json_valid(`rank_history`))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -61,4 +62,4 @@ CREATE TABLE `osu_score_rank_history` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2023-10-13 20:30:12
+-- Dump completed on 2025-08-05 19:24:38
