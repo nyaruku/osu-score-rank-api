@@ -2,11 +2,11 @@ const express = require("express");
 const morgan = require("morgan");
 const Redis = require("ioredis");
 const redisClient = new Redis();
-const config = require("./config");
-const { metricsServer, observeDbQueryDuration, observeRequestDuration } = require("./metrics");
+const config = require("./config.json");
+//const { metricsServer, observeDbQueryDuration, observeRequestDuration } = require("./metrics");
 const responseTime = require("response-time");
-const mariadb = require("mariadb");
-const pool = mariadb.createPool({
+const mysql = require("mysql2/promise");
+const pool = mysql.createPool({
     host: config.db.host,
     user: config.db.user,
     password: config.db.pw,
@@ -96,15 +96,15 @@ async function getPeakRank(user_id, mode) {
     try {
         conn = await pool.getConnection();
         rows = await conn.query(
-            "SELECT * FROM osu_score_rank_highest WHERE user_id = ? AND mode = ?",
+            "SELECT `rank`, updated_at FROM osu_score_rank_highest WHERE user_id = ? AND mode = ?",
             [user_id, MODES[mode]]
         );
     } finally {
-        if (conn) conn.end();
+        if (conn) conn.release();
     }
     const endTime = process.hrtime(startTime);
     const duration = endTime[0] + endTime[1] / 1e9;
-    observeDbQueryDuration(duration, "getPeakRank");
+    //observeDbQueryDuration(duration, "getPeakRank");
 
     let rank_highest = rows[0]?.rank
         ? { rank: rows[0].rank, updated_at: rows[0].updated_at }
@@ -122,12 +122,12 @@ async function getRankHistory(user_id, mode) {
             [user_id, MODES[mode]]
         );
     } finally {
-        if (conn) conn.end();
+        if (conn) conn.release();
     }
 
     const endTime = process.hrtime(startTime);
     const duration = endTime[0] + endTime[1] / 1e9;
-    observeDbQueryDuration(duration, "getRankHistory");
+    //observeDbQueryDuration(duration, "getRankHistory");
 
     if (!rows[0]?.rank_history || !rows[0]?.updated_at) {
         return null;
@@ -183,7 +183,7 @@ async function main() {
     api.use(
         responseTime((req, res, response_time) => {
             if (!req?.route?.path) return;
-
+            /*
             observeRequestDuration(
                 response_time / 1000,
                 req.method,
@@ -192,6 +192,7 @@ async function main() {
                 guessOriginFromRequestHeaders(req),
                 parseMode(req.query.mode, req.query.m)
             );
+            */
         })
     );
 
@@ -318,7 +319,7 @@ async function main() {
         let mode = parseMode(req.query.mode, req.query.m);
 
         if (
-            req.query.page > 200 ||
+            req.query.page > 20 ||
             req.query.page < 1 ||
             req.query.page == undefined ||
             isNaN(req.query.page)
@@ -357,4 +358,4 @@ main();
 if (config.metrics.port > 0) {
     metricsServer(config.metrics.port);
 }
-require("./fetcher");
+require("./fetcher.cjs");

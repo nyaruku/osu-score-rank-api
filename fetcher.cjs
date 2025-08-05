@@ -1,10 +1,9 @@
 const axios = require("axios");
 const Redis = require("ioredis");
 const redisClient = new Redis();
-const config = require("./config");
-const { observeDbQueryDuration, observeOsuApiRequestDuration } = require("./metrics");
-const mariadb = require("mariadb");
-const pool = mariadb.createPool({
+const config = require("./config.json");
+const mysql = require("mysql2/promise");
+const pool = mysql.createPool({
     host: config.db.host,
     user: config.db.user,
     password: config.db.pw,
@@ -68,7 +67,6 @@ async function refreshToken() {
 }
 
 async function fullRankingsUpdate(mode, type, cursor_string) {
-    let conn;
     if (Date.now() > refresh - 5 * 60 * 1000) {
         token = await refreshToken();
     }
@@ -83,10 +81,6 @@ async function fullRankingsUpdate(mode, type, cursor_string) {
     osuAPI
         .get("/rankings/" + mode + "/" + type, { params: { cursor_string: cursor_string } })
         .then(async (res) => {
-            const osuAPIEndTime = process.hrtime(osuAPIStartTime);
-            const osuAPIDuration = osuAPIEndTime[0] + osuAPIEndTime[1] / 1e9;
-            observeOsuApiRequestDuration(osuAPIDuration, mode, res.status);
-
             let i = 0;
 
             // console.log("Adding " + res.data.ranking.length + " Entries to the db");
@@ -99,31 +93,29 @@ async function fullRankingsUpdate(mode, type, cursor_string) {
                 await redisClient.zadd(`score_${mode}`, elem.ranked_score, elem.user.id);
                 await redisClient.hset("user_id_to_username", elem.user.id, elem.user.username);
                 await redisClient.hset("username_to_user_id", elem.user.username, elem.user.id);
+                let conn;
                 try {
                     conn = await pool.getConnection();
 
                     const selectStartTime = process.hrtime();
-                    const rows = await conn.query(
-                        "SELECT rank FROM osu_score_rank_highest WHERE user_id = ? AND mode = ?",
+                    const [rows] = await conn.query(
+                        "SELECT `rank` FROM osu_score_rank_highest WHERE user_id = ? AND mode = ?",
                         [elem.user.id, MODES[mode]]
                     );
-
                     const selectEndTime = process.hrtime(selectStartTime);
                     const duration = selectEndTime[0] + selectEndTime[1] / 1e9;
-                    observeDbQueryDuration(duration, "getPeakRank");
 
                     const rank = await redisClient.zrevrank(`score_${mode}`, elem.user.id);
                     if (!rows[0] || rank + 1 < rows[0].rank) {
                         const insertStartTime = process.hrtime();
 
                         const res = await conn.query(
-                            "INSERT INTO osu_score_rank_highest (user_id, mode, rank) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE rank=?",
+                            "INSERT INTO osu_score_rank_highest (user_id, mode, `rank`) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `rank`=?",
                             [elem.user.id, MODES[mode], rank + 1, rank + 1]
                         );
 
                         const insertEndTime = process.hrtime(insertStartTime);
                         const duration = insertEndTime[0] + insertEndTime[1] / 1e9;
-                        observeDbQueryDuration(duration, "insertPeakRank");
                         // console.log(
                         //     "Added new highest rank",
                         //     rank + 1,
@@ -134,7 +126,7 @@ async function fullRankingsUpdate(mode, type, cursor_string) {
                         // );
                     }
                 } finally {
-                    if (conn) conn.end();
+                    if (conn) conn.release();
                 }
             });
 
@@ -160,11 +152,6 @@ async function fullRankingsUpdate(mode, type, cursor_string) {
             }
         })
         .catch(async (err) => {
-            const osuAPIEndTime = process.hrtime(osuAPIStartTime);
-            const osuAPIDuration = osuAPIEndTime[0] + osuAPIEndTime[1] / 1e9;
-
-            observeOsuApiRequestDuration(osuAPIDuration, mode, err.response?.status || "Unknown");
-
             if (retries[mode][type] < 4) {
                 console.log(err);
                 console.log("Retry: " + retries[mode][type]);

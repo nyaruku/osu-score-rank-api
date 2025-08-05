@@ -46,7 +46,7 @@ DROP TABLE IF EXISTS `osu_score_rank_history`;
 CREATE TABLE `osu_score_rank_history` (
   `user_id` int(10) unsigned NOT NULL,
   `mode` tinyint(4) NOT NULL,
-  `rank_history` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT '[]' CHECK (json_valid(`rank_history`)),
+  `rank_history` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`rank_history`)),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`user_id`,`mode`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
